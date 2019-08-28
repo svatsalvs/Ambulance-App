@@ -1,0 +1,51 @@
+version: '3.7'
+
+services:
+  ambulance-redis:
+    container_name: ambulance-redis
+    image: redis:5.0.3-alpine
+
+  ambulance-server:
+    build:
+      context: ./server
+    volumes:  # new
+      - media:/usr/src/app/media
+      - static:/usr/src/app/static
+    command: daphne --bind 0.0.0.0 --port 8000 ambulance.asgi:application
+    container_name: ambulance-server
+    depends_on:
+      - ambulance-redis
+    environment:
+      - REDIS_URL=redis://ambulance-redis:6379/0
+    ports:
+      - 8001:8000
+
+  ambulance-client:
+    build:
+      context: ./client
+    command: ng serve --host 0.0.0.0
+    container_name: ambulance-client
+    depends_on:
+      - ambulance-server
+    environment:
+      - CHROME_BIN=chromium-browser
+    ports:
+      - 4201:4200
+
+  nginx: # new
+    build:
+      context: ./nginx
+    container_name: ambulance-nginx
+    depends_on:
+      - ambulance-server
+      - ambulance-client
+    ports:
+      - 8081:80
+    restart: always
+    volumes:
+      - media:/usr/src/app/media
+      - static:/usr/src/app/static
+
+volumes: # new
+  media:
+  static:
